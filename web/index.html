@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cutterForge — wycinaki i stemple</title>
+<style>
+  :root{
+    --bg:#12141a; --panel:#1a1d26; --panel2:#20242f; --line:#2c3140;
+    --txt:#e8eaf0; --mut:#8b93a7; --acc:#f0a35e; --acc2:#7ec8a9;
+  }
+  *{box-sizing:border-box} body{margin:0;font-family:'Segoe UI',system-ui,sans-serif;
+    background:var(--bg);color:var(--txt)}
+  header{padding:18px 26px;border-bottom:1px solid var(--line);display:flex;
+    align-items:baseline;gap:14px}
+  header h1{margin:0;font-size:22px}
+  header span{color:var(--mut);font-size:13px}
+  main{display:grid;grid-template-columns:390px 1fr;gap:0;height:calc(100vh - 62px)}
+  #left{overflow-y:auto;border-right:1px solid var(--line);padding:18px}
+  #right{display:flex;flex-direction:column}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);
+    margin:20px 0 8px}
+  .promptrow{display:flex;gap:8px}
+  input[type=text]{flex:1;background:var(--panel2);border:1px solid var(--line);
+    color:var(--txt);border-radius:8px;padding:10px 12px;font-size:14px}
+  button{background:var(--acc);border:0;color:#1a120a;font-weight:600;border-radius:8px;
+    padding:10px 16px;cursor:pointer;font-size:14px}
+  button.sec{background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
+  button:disabled{opacity:.5;cursor:wait}
+  #cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:6px}
+  .cat{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    padding:8px 6px;text-align:center;cursor:pointer;font-size:12px;line-height:1.25}
+  .cat:hover{border-color:var(--acc)}
+  .cat .em{font-size:20px;display:block;margin-bottom:3px}
+  #results{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+  .shape{background:#fff;border-radius:10px;padding:6px;cursor:pointer;
+    border:3px solid transparent;text-align:center}
+  .shape.sel{border-color:var(--acc)}
+  .shape svg{width:100%;aspect-ratio:1;display:block}
+  .shape .nm{font-size:11px;color:#333;padding:3px 0 1px;font-weight:600;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #warn{color:#e8b34c;font-size:12px;margin:8px 0;display:none}
+  .params{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:6px}
+  .params label{font-size:12px;color:var(--mut);display:flex;flex-direction:column;gap:3px}
+  .params input{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    border-radius:6px;padding:6px 8px;font-size:13px}
+  .modes{display:flex;gap:6px;margin:6px 0}
+  .modes button{flex:1}
+  .modes button.off{background:var(--panel2);color:var(--mut);border:1px solid var(--line)}
+  #viewer{flex:1;min-height:0}
+  #vbar{display:flex;gap:10px;align-items:center;padding:10px 16px;
+    border-top:1px solid var(--line);background:var(--panel)}
+  #stats{color:var(--mut);font-size:12px;flex:1}
+  a#dl{background:var(--acc2);color:#0c1a14;font-weight:700;border-radius:8px;
+    padding:10px 18px;text-decoration:none;font-size:14px;display:none}
+  #spin{display:none;color:var(--mut);font-size:13px;margin:8px 0}
+</style>
+</head>
+<body>
+<header><h1>🔪 cutterForge</h1><span>wycinaki do gliny/ciastek i stemple — z promptu AI albo kategorii</span></header>
+<main>
+  <div id="left">
+    <h2>Własny motyw (AI)</h2>
+    <div class="promptrow">
+      <input id="prompt" type="text" placeholder="np. zestaw świąteczny, dinozaury, postacie z bajki...">
+      <button id="go">Generuj</button>
+    </div>
+    <div id="spin">⏳ szukam kształtów w kilku źródłach — pierwszy raz potrafi zająć minutę…</div>
+    <div id="warn"></div>
+
+    <h2>Wyniki <button id="refresh" class="sec" style="padding:3px 10px;font-size:11px;display:none">🔄 inne warianty</button></h2>
+    <div id="results"></div>
+
+    <h2>Ustawienia modelu</h2>
+    <div class="modes">
+      <button id="mCutter">✂️ Wycinak</button>
+      <button id="mStamp" class="off">🔏 Stempel</button>
+    </div>
+    <div class="params" id="pCutter">
+      <label>rozmiar [mm]<input id="size" type="number" value="70" step="5"></label>
+      <label>wys. ostrza [mm]<input id="blade_h" type="number" value="10" step="1"></label>
+      <label>wys. korpusu [mm]<input id="body_h" type="number" value="6" step="1"></label>
+      <label>grubość ostrza [mm]<input id="blade_t" type="number" value="0.8" step="0.1"></label>
+      <label>grubość korpusu [mm]<input id="body_t" type="number" value="1.6" step="0.2"></label>
+      <label>kołnierz [mm]<input id="flange_w" type="number" value="3" step="1"></label>
+    </div>
+    <div class="params" id="pStamp" style="display:none">
+      <label>rozmiar [mm]<input id="s_size" type="number" value="50" step="5"></label>
+      <label>relief [mm]<input id="stamp_relief" type="number" value="1.5" step="0.25"></label>
+      <label>płytka [mm]<input id="stamp_base_t" type="number" value="3" step="0.5"></label>
+      <label>margines [mm]<input id="stamp_margin" type="number" value="4" step="1"></label>
+    </div>
+    <div style="margin-top:12px"><button id="build" style="width:100%">🧊 Generuj model 3D</button></div>
+
+    <h2>Kategorie bazowe</h2>
+    <div id="cats"></div>
+  </div>
+
+  <div id="right">
+    <div id="viewer"></div>
+    <div id="vbar">
+      <div id="stats">wybierz kształt i kliknij „Generuj model 3D”</div>
+      <a id="dl" download>⬇ Pobierz STL</a>
+    </div>
+  </div>
+</main>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js",
+"three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {STLLoader} from 'three/addons/loaders/STLLoader.js';
+
+const $ = id => document.getElementById(id);
+let shapes = [], selected = -1, mode = 'cutter', lastQuery = null;
+
+// ---------- three.js ----------
+const box = $('viewer');
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x171a22);
+const cam = new THREE.PerspectiveCamera(45, 1, 0.1, 2000); cam.position.set(90, -110, 90); cam.up.set(0,0,1);
+const ren = new THREE.WebGLRenderer({antialias:true}); box.appendChild(ren.domElement);
+const ctl = new OrbitControls(cam, ren.domElement);
+scene.add(new THREE.AmbientLight(0xffffff, .55));
+const dl1 = new THREE.DirectionalLight(0xffffff, 1.0); dl1.position.set(80, -60, 120); scene.add(dl1);
+const dl2 = new THREE.DirectionalLight(0x88aaff, .35); dl2.position.set(-70, 80, 40); scene.add(dl2);
+const grid = new THREE.GridHelper(260, 26, 0x2c3140, 0x232733);
+grid.rotation.x = Math.PI/2; scene.add(grid);
+let meshObj = null;
+function resize(){const w=box.clientWidth,h=box.clientHeight;ren.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(box); resize();
+(function loop(){requestAnimationFrame(loop);ctl.update();ren.render(scene,cam)})();
+
+function showSTL(url){
+  new STLLoader().load(url, geo => {
+    if(meshObj){scene.remove(meshObj);meshObj.geometry.dispose()}
+    geo.computeVertexNormals();
+    meshObj = new THREE.Mesh(geo, new THREE.MeshStandardMaterial(
+      {color:0xf0a35e, metalness:.1, roughness:.55}));
+    scene.add(meshObj);
+    geo.computeBoundingSphere();
+    const r = geo.boundingSphere.radius;
+    ctl.target.copy(geo.boundingSphere.center);
+    cam.position.set(r*1.5, -r*1.8, r*1.6);
+  });
+}
+
+// ---------- kategorie ----------
+fetch('/api/categories').then(r=>r.json()).then(cats=>{
+  $('cats').innerHTML = cats.map(c =>
+    `<div class="cat" data-id="${c.id}"><span class="em">${c.emoji}</span>${c.name}</div>`).join('');
+  document.querySelectorAll('.cat').forEach(el =>
+    el.onclick = () => getShapes({category: el.dataset.id}));
+});
+
+// ---------- kształty ----------
+async function getShapes(q){
+  lastQuery = q;
+  $('spin').style.display='block'; $('warn').style.display='none';
+  $('go').disabled = true;
+  try{
+    const r = await fetch('/api/shapes', {method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify(q)});
+    const d = await r.json();
+    if(d.error){alert(d.error);return}
+    shapes = d.items; selected = -1; renderShapes();
+    $('refresh').style.display = 'inline-block';
+    if(d.warning){$('warn').textContent = '⚠ ' + d.warning; $('warn').style.display='block'}
+  } finally { $('spin').style.display='none'; $('go').disabled=false }
+}
+function renderShapes(){
+  $('results').innerHTML = shapes.map((s,i) =>
+    `<div class="shape ${i===selected?'sel':''}" data-i="${i}">
+       <svg viewBox="-4 -4 108 108"><path d="${s.path}" fill="#222" fill-rule="evenodd"/></svg>
+       <div class="nm" title="źródło: ${s.source||'?'}">${{icon:'🧩',web:'🌐',ai:'🤖',builtin:'📦'}[s.source]||''} ${s.name}</div></div>`).join('');
+  document.querySelectorAll('.shape').forEach(el =>
+    el.onclick = () => {selected = +el.dataset.i; renderShapes(); buildModel()});
+}
+$('go').onclick = () => {const p = $('prompt').value.trim(); if(p) getShapes({prompt:p})};
+$('prompt').addEventListener('keydown', e => {if(e.key==='Enter') $('go').onclick()});
+$('refresh').onclick = () => {if(lastQuery) getShapes({...lastQuery, fresh:true})};
+
+// ---------- tryb ----------
+function setMode(m){
+  mode = m;
+  $('mCutter').classList.toggle('off', m!=='cutter');
+  $('mStamp').classList.toggle('off', m!=='stamp');
+  $('pCutter').style.display = m==='cutter'?'grid':'none';
+  $('pStamp').style.display = m==='stamp'?'grid':'none';
+  if(selected >= 0) buildModel();   // przełączenie trybu = od razu nowy podgląd
+}
+$('mCutter').onclick = () => setMode('cutter');
+$('mStamp').onclick = () => setMode('stamp');
+
+// ---------- budowa ----------
+async function buildModel(){
+  if(selected < 0){alert('najpierw wybierz kształt z wyników');return}
+  const s = shapes[selected];
+  const body = {path: s.path, name: s.name, mode};
+  if(mode==='cutter'){
+    for(const k of ['size','blade_h','body_h','blade_t','body_t','flange_w'])
+      body[k] = parseFloat($(k).value);
+  } else {
+    body.size = parseFloat($('s_size').value);
+    for(const k of ['stamp_relief','stamp_base_t','stamp_margin'])
+      body[k] = parseFloat($(k).value);
+  }
+  $('build').disabled = true; $('stats').textContent = '⏳ buduję bryłę…';
+  try{
+    const r = await fetch('/api/model', {method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const d = await r.json();
+    if(d.error){$('stats').textContent = '✗ ' + d.error; return}
+    showSTL(d.url);
+    $('stats').textContent =
+      `${d.file} · ${d.bbox[0]}×${d.bbox[1]}×${d.bbox[2]} mm · ${d.tris} trójkątów` +
+      (d.watertight ? ' · szczelny ✓' : ' · NIESZCZELNY ⚠');
+    const a = $('dl'); a.href = d.url; a.download = d.file; a.style.display='inline-block';
+  } finally { $('build').disabled = false }
+}
+$('build').onclick = buildModel;
+
+// start: pokaż wbudowane kształty, żeby nie było pusto
+fetch('/api/builtin').then(r=>r.json()).then(d=>{shapes=d.items;renderShapes()});
+</script>
+</body>
+</html>

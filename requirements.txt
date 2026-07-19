@@ -1,0 +1,11 @@
+flask
+numpy
+trimesh
+shapely
+svgpathtools
+mapbox-earcut
+manifold3d
+requests
+python-dotenv
+ddgs
+opencv-python-headless
