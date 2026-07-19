@@ -12,9 +12,15 @@ Groq służy głównie do tłumaczenia motywu na konkretne obiekty
 """
 
 import concurrent.futures as futures
+import os
 import re
 
 import requests
+
+# na Renderze (512MB RAM) mniej równoległości — 4 wątki dekodujące
+# grafiki naraz wywalały OOM; env RENDER ustawia sama platforma
+_WORKERS = 2 if os.environ.get("RENDER") else 4
+_MAX_DOWNLOAD = 5 * 1024 * 1024  # 5MB na obraz wystarcza dla clipartów
 from shapely.geometry import Polygon
 
 import ai
@@ -117,7 +123,14 @@ def web_candidates(query_en: str, k: int = 1) -> list[Polygon]:
         if not url:
             continue
         try:
-            img = requests.get(url, timeout=12, headers=HEADERS).content
+            w, h = int(res.get("width") or 0), int(res.get("height") or 0)
+            if w * h > 16_000_000:      # za duże do dekodowania na 512MB RAM
+                continue
+            with requests.get(url, timeout=12, headers=HEADERS,
+                              stream=True) as r:
+                img = r.raw.read(_MAX_DOWNLOAD + 1)
+            if len(img) > _MAX_DOWNLOAD:
+                continue
         except Exception:
             continue
         poly, score = vectorize.image_to_polygon(img)
@@ -161,7 +174,7 @@ def gather(theme: str) -> list[dict]:
         items = [{"pl": theme, "en": theme, "icon": theme}]
 
     out, seen = [], set()
-    with futures.ThreadPoolExecutor(max_workers=4) as ex:
+    with futures.ThreadPoolExecutor(max_workers=_WORKERS) as ex:
         for cands in ex.map(_one_item, items):
             for res in cands:
                 # dedup: różne hasła trafiają czasem w tę samą ikonę

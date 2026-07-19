@@ -20,8 +20,15 @@ from shapely.geometry import Polygon
 MAX_SIDE = 640
 
 
+MAX_PIXELS = 16_000_000  # obrazy większe niż ~16MP odrzucamy (RAM!)
+
+
 def _to_gray(img_bytes: bytes) -> np.ndarray:
     im = Image.open(io.BytesIO(img_bytes))
+    if im.width * im.height > MAX_PIXELS:
+        raise ValueError("obraz za duży")
+    # JPEG: dekodowanie od razu w zmniejszonej skali — duża oszczędność RAM
+    im.draft("L", (MAX_SIDE * 2, MAX_SIDE * 2))
     if im.mode in ("RGBA", "LA", "P"):
         im = im.convert("RGBA")
         bg = Image.new("RGBA", im.size, (255, 255, 255, 255))

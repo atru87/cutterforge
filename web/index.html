@@ -163,7 +163,14 @@ async function getShapes(q){
   try{
     const r = await fetch('/api/shapes', {method:'POST',
       headers:{'Content-Type':'application/json'}, body:JSON.stringify(q)});
-    const d = await r.json();
+    let d;
+    try { d = await r.json() }
+    catch {
+      $('warn').textContent = '⚠ serwer chwilowo przeciążony (kod ' + r.status +
+        ') — odczekaj chwilę i spróbuj ponownie';
+      $('warn').style.display = 'block';
+      return;
+    }
     if(d.error){alert(d.error);return}
     shapes = d.items; selected = -1; renderShapes();
     $('refresh').style.display = 'inline-block';
