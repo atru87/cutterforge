@@ -37,7 +37,7 @@ _LOGIN_HTML = """<!DOCTYPE html>
   .err{color:#e06c6c;font-size:13px;min-height:16px}
 </style></head><body>
 <form method="post" action="/login">
-  <h1>🔒 tomyDrukujemy</h1>
+  <h1>🔒 Dostęp chroniony</h1>
   <p>Podaj hasło platformy, aby kontynuować.</p>
   <input type="password" name="password" placeholder="hasło" autofocus autocomplete="current-password">
   <div class="err">{{ error }}</div>
