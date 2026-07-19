@@ -107,8 +107,8 @@ def web_candidates(query_en: str, k: int = 1) -> list[Polygon]:
     """Najlepiej ocenione wektoryzacje z wyszukiwarki obrazów (do k)."""
     try:
         from ddgs import DDGS
-        results = list(DDGS().images(f"{query_en} silhouette clipart black",
-                                     max_results=8))
+        results = list(DDGS(timeout=10).images(
+            f"{query_en} silhouette clipart black", max_results=8))
     except Exception:
         return []
     scored, tried = [], 0

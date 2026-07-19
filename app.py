@@ -32,7 +32,10 @@ import sources
 from builtin_shapes import builtin_shapes
 from config import PORT, DEFAULTS
 
+from auth import init_auth
+
 app = Flask(__name__, static_folder=None)
+init_auth(app, "cutterforge")
 OUT = BASE / "out"
 CACHE = BASE / "cache"
 CATEGORIES = json.loads((BASE / "categories.json").read_text(encoding="utf-8"))
